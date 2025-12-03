@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Video Yükləyici</title>
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <div class="logo">
+                <i class="fa-brands fa-tiktok"></i> 
+                <span>TIKTOK DOWNLOADER</span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="active">Home</a>
+                <a href="#">About</a>
+                <a href="#">Contact</a>
+            </div>
+        </div>
+
+        <div class="hero-text">
+            <h1>DOWNLOAD TIKTOK VIDEOS EFFORTLESSLY</h1>
+            <p>No Watermark, High Quality, Fast & Free</p>
+        </div>
+
+        <div class="download-form">
+            <div class="input-group">
+                <input type="text" id="urlInput" placeholder="Paste TikTok Video Link Here...">
+                <button class="download-btn" onclick="downloadVideo()">DOWNLOAD</button>
+            </div>
+        </div>
+
+        <div id="result">
+            <p style="color: #888;">TikTok linkini daxil edib 'DOWNLOAD' düyməsinə basın.</p>
+        </div>
+
+        <div class="footer">
+            &copy; 2025 TikTok Downloader. All your rights reserved.
+        </div>
+    </div>
+
+    <script>
+        async function downloadVideo() {
+            const url = document.getElementById('urlInput').value;
+            const resultDiv = document.getElementById('result');
+
+            // --- YÜKLƏNİR GÖRÜNÜŞÜ ---
+            resultDiv.innerHTML = '<p style="color: var(--primary-color); font-weight: 600;"><i class="fas fa-spinner fa-spin"></i> Yüklənir... Zəhmət olmasa, gözləyin.</p>';
+
+            if (!url) {
+                resultDiv.innerHTML = '<p style="color: red;">Zəhmət olmasa, etibarlı bir link daxil edin.</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tiktokUrl: url })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    const downloadUrl = data.download_url; 
+                    
+                    // --- UĞURLU CAVAB VƏ VİDEO KARTI ---
+                    resultDiv.innerHTML = `
+                        <div class="success-found">
+                            <div class="result-header">Video Uğurla Tapıldı!</div>
+                            
+                            <div class="video-card">
+                                <div class="video-thumbnail">
+                                    <div class="img-not-found">
+                                        Thumbnail <br> Not Found
+                                    </div>
+                                </div>
+                                
+                                <div class="video-info">
+                                    <h4>Viral TikTok Video!</h4>
+                                    <p style="color: #777;">@TikTokUser</p>
+                                    
+                                    <div class="video-stats">
+                                        <span><i class="fas fa-eye"></i> 584K</span>
+                                        <span><i class="fas fa-heart"></i> 34K</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-buttons">
+                                <a href="${downloadUrl}" download="tiktok_video.mp4" class="btn-mp4">
+                                    Download MP4
+                                </a>
+                                <a href="${downloadUrl}" target="_blank" class="btn-link" title="${downloadUrl}">
+                                    <i class="fas fa-link" style="margin-right: 5px;"></i> ${downloadUrl}
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // --- XƏTA CAVABI ---
+                    resultDiv.innerHTML = `<p style="color: red; font-weight: 600;">Xəta: ${data.error || 'Naməlum xəta baş verdi.'}</p>`;
+                }
+
+            } catch (error) {
+                console.error('Frontend Xətası:', error);
+                resultDiv.innerHTML = '<p style="color: red; font-weight: 600;">Bağlantı xətası baş verdi. Server yoxlanılsın.</p>';
+            }
+        }
+    </script>
+</body>
+</html>
