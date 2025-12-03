@@ -1,4 +1,4 @@
-// server.js faylı
+// server.js - Bütün xətaları həll edən son versiya
 
 require('dotenv').config(); 
 const express = require('express');
@@ -15,19 +15,46 @@ app.post('/api/download', async (req, res) => {
     
     console.log("[DEBUG] /api/download endpointi çağırıldı."); 
 
-    // let istifadə edirik ki, dəyəri dəyişdirə bilək
+    // 'let' istifadə edirik ki, dəyəri dəyişdirə bilək
     let { tiktokUrl } = req.body; 
     
-    // 👇👇👇 1. MOBİL LINK FORMATINI DÜZƏLT (400 XƏTASINI HƏLL EDİR) 👇👇👇
-    if (tiktokUrl) {
-        // decodeURIComponent ilə URL-lərdəki xüsusi simvolları təmizləyirik
-        tiktokUrl = decodeURIComponent(tiktokUrl); 
-    }
-    // 👆👆👆 👆👆👆 👆👆👆 👆👆👆
-
     if (!tiktokUrl) {
         return res.status(400).json({ error: 'TikTok linki tələb olunur.' });
     }
+
+    // 1. Qısa URL-i (vt.tiktok.com) Uzun URL-ə çeviririk (Qısa link xətasını həll edir)
+    if (tiktokUrl.includes('vt.tiktok.com') || tiktokUrl.includes('m.tiktok.com')) {
+        try {
+            console.log(`[DEBUG] Qısa URL aşkar edildi, genişləndirilir: ${tiktokUrl}`);
+            
+            // maxRedirects: 0 ilə axios-un özünün yönləndirməni izləməsinin qarşısını alırıq.
+            const redirectResponse = await axios.get(tiktokUrl, {
+                maxRedirects: 0, 
+                timeout: 10000,
+                // Status 301/302/307-ni xəta kimi qəbul etməmək üçün
+                validateStatus: (status) => status >= 200 && status < 400 
+            });
+
+            // Yönləndirmə Header-i yoxlanılır
+            if (redirectResponse.headers.location) {
+                tiktokUrl = redirectResponse.headers.location;
+                console.log(`[DEBUG] Yeni Uzun URL: ${tiktokUrl}`);
+            }
+
+        } catch (redirectError) {
+            // Əgər yönləndirmə xətası yaranarsa (adətən 301/302), URL-i Header-dən çıxarırıq.
+            if (redirectError.response && redirectError.response.headers.location) {
+                tiktokUrl = redirectError.response.headers.location;
+                console.log(`[DEBUG] Yeni Uzun URL (xəta tutularaq): ${tiktokUrl}`);
+            } else {
+                console.error("[ERROR] Link genişləndirilərkən naməlum xəta:", redirectError.message);
+                // Burada serveri dayandırmırıq ki, növbəti addımda ən azı orijinal link yoxlanılsın.
+            }
+        }
+    }
+    
+    // 2. URL təmizlənməsi (Mobil 400 Bad Request xətasını həll edir)
+    tiktokUrl = decodeURIComponent(tiktokUrl); 
 
     const API_HOST = process.env.RAPIDAPI_HOST;
     const API_ENDPOINT_PATH = '/media'; 
@@ -35,7 +62,7 @@ app.post('/api/download', async (req, res) => {
     
     try {
         const response = await axios.get(apiUrl, {
-            // 👇👇👇 2. TIMEOUT-u 30 SANİYƏYƏ QALDIRIRIQ 👇👇👇
+            // 3. Timeout-u 30 saniyəyə qaldırır (Mobil şəbəkə sabitliyini təmin edir)
             timeout: 30000, 
             params: {
                 videoUrl: tiktokUrl
@@ -50,7 +77,7 @@ app.post('/api/download', async (req, res) => {
         const data = response.data;
         let downloadUrl = null;
         
-        // Düzgün link sahəsi: downloadUrl (CamelCase)
+        // Linkin çıxarılması
         if (data && data.downloadUrl) {
             downloadUrl = data.downloadUrl;
         } else if (data && data.video_url) {
@@ -71,6 +98,7 @@ app.post('/api/download', async (req, res) => {
 
     } catch (error) {
         let errorMessage = 'Naməlum xəta baş verdi.';
+        // Geniş xəta tutma (Hər hansı bir şəbəkə/API problemini log edir)
         if (error.response) {
             errorMessage = `RapidAPI Xətası: ${error.response.status} - ${error.response.statusText}`;
         } else if (error.code === 'ECONNABORTED') {
