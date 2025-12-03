@@ -15,7 +15,16 @@ app.post('/api/download', async (req, res) => {
     
     console.log("[DEBUG] /api/download endpointi çağırıldı."); 
 
-    const { tiktokUrl } = req.body; 
+    // let istifadə edirik ki, dəyəri dəyişdirə bilək
+    let { tiktokUrl } = req.body; 
+    
+    // 👇👇👇 1. MOBİL LINK FORMATINI DÜZƏLT (400 XƏTASINI HƏLL EDİR) 👇👇👇
+    if (tiktokUrl) {
+        // decodeURIComponent ilə URL-lərdəki xüsusi simvolları təmizləyirik
+        tiktokUrl = decodeURIComponent(tiktokUrl); 
+    }
+    // 👆👆👆 👆👆👆 👆👆👆 👆👆👆
+
     if (!tiktokUrl) {
         return res.status(400).json({ error: 'TikTok linki tələb olunur.' });
     }
@@ -26,6 +35,7 @@ app.post('/api/download', async (req, res) => {
     
     try {
         const response = await axios.get(apiUrl, {
+            // 👇👇👇 2. TIMEOUT-u 30 SANİYƏYƏ QALDIRIRIQ 👇👇👇
             timeout: 30000, 
             params: {
                 videoUrl: tiktokUrl
@@ -64,7 +74,7 @@ app.post('/api/download', async (req, res) => {
         if (error.response) {
             errorMessage = `RapidAPI Xətası: ${error.response.status} - ${error.response.statusText}`;
         } else if (error.code === 'ECONNABORTED') {
-            errorMessage = `Sorğu Vaxtı Bitdi (30s): ${error.message}`; // Xüsusi Timeout xətası
+            errorMessage = `Sorğu Vaxtı Bitdi (30s): ${error.message}`;
         } else {
             errorMessage = `Şəbəkə Xətası: ${error.message}`;
         }
