@@ -26,7 +26,7 @@ app.post('/api/download', async (req, res) => {
     
     try {
         const response = await axios.get(apiUrl, {
-            timeout: 15000, 
+            timeout: 30000, 
             params: {
                 videoUrl: tiktokUrl
             },
@@ -63,6 +63,8 @@ app.post('/api/download', async (req, res) => {
         let errorMessage = 'Naməlum xəta baş verdi.';
         if (error.response) {
             errorMessage = `RapidAPI Xətası: ${error.response.status} - ${error.response.statusText}`;
+        } else if (error.code === 'ECONNABORTED') {
+            errorMessage = `Sorğu Vaxtı Bitdi (30s): ${error.message}`; // Xüsusi Timeout xətası
         } else {
             errorMessage = `Şəbəkə Xətası: ${error.message}`;
         }
