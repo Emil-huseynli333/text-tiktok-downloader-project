@@ -1,12 +1,16 @@
-// server.js - Bütün xətaları həll edən son versiya
+// server.js - Bütün xətaları (URL, Timeout, CORS) həll edən son versiya
 
 require('dotenv').config(); 
 const express = require('express');
 const axios = require('axios');
 const path = require('path');
+const cors = require('cors'); // CORS dəstəyi üçün əlavə edildi
 
 const app = express();
 const port = 3000;
+
+// CORS-u bütün sorğular üçün aktivləşdir (Android/Mobil tətbiq xətasını həll edir)
+app.use(cors()); 
 
 app.use(express.json()); 
 app.use(express.static(path.join(__dirname, 'public'))); 
@@ -27,28 +31,23 @@ app.post('/api/download', async (req, res) => {
         try {
             console.log(`[DEBUG] Qısa URL aşkar edildi, genişləndirilir: ${tiktokUrl}`);
             
-            // maxRedirects: 0 ilə axios-un özünün yönləndirməni izləməsinin qarşısını alırıq.
             const redirectResponse = await axios.get(tiktokUrl, {
                 maxRedirects: 0, 
                 timeout: 10000,
-                // Status 301/302/307-ni xəta kimi qəbul etməmək üçün
                 validateStatus: (status) => status >= 200 && status < 400 
             });
 
-            // Yönləndirmə Header-i yoxlanılır
             if (redirectResponse.headers.location) {
                 tiktokUrl = redirectResponse.headers.location;
                 console.log(`[DEBUG] Yeni Uzun URL: ${tiktokUrl}`);
             }
 
         } catch (redirectError) {
-            // Əgər yönləndirmə xətası yaranarsa (adətən 301/302), URL-i Header-dən çıxarırıq.
             if (redirectError.response && redirectError.response.headers.location) {
                 tiktokUrl = redirectError.response.headers.location;
                 console.log(`[DEBUG] Yeni Uzun URL (xəta tutularaq): ${tiktokUrl}`);
             } else {
                 console.error("[ERROR] Link genişləndirilərkən naməlum xəta:", redirectError.message);
-                // Burada serveri dayandırmırıq ki, növbəti addımda ən azı orijinal link yoxlanılsın.
             }
         }
     }
@@ -98,7 +97,7 @@ app.post('/api/download', async (req, res) => {
 
     } catch (error) {
         let errorMessage = 'Naməlum xəta baş verdi.';
-        // Geniş xəta tutma (Hər hansı bir şəbəkə/API problemini log edir)
+        // Geniş xəta tutma
         if (error.response) {
             errorMessage = `RapidAPI Xətası: ${error.response.status} - ${error.response.statusText}`;
         } else if (error.code === 'ECONNABORTED') {
